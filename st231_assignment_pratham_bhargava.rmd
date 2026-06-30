@@ -1,0 +1,374 @@
+---
+title: "ST231 Assignment"
+author: "Pratham Bhargava"
+date: "2026-04-28"
+output:
+  pdf_document:
+    extra_dependencies: ["float"]
+    keep_tex: true
+    fig_caption: true
+    highlight: monochrome
+header-includes:
+  - \usepackage{float}
+  - \usepackage{caption}
+  - \usepackage{amsmath}
+  - \captionsetup[table]{position=bottom}
+fontsize: 11pt
+---
+```{r setup, include=FALSE}
+library(kableExtra)
+library(knitr)
+library(dplyr)
+library(readr)
+library(car)
+
+knitr::opts_chunk$set(echo=FALSE, out.width="60%", fig.align="center", comment="", message=FALSE)
+```
+
+# Question 1
+
+```{r, load-data}
+dia <- read_csv("dia.csv")
+```
+
+## a.
+
+```{r, 1a}
+# Adding log.price and log.x columns to dia for future reference. 
+dia <- dia %>%
+  mutate(
+    log.price=log(price), 
+    log.x=log(x)
+  )
+
+# Model 1. 
+M1 <- lm(log.price ~ log.x, data=dia)
+
+# The estimated coefficient for log(x).
+beta.1 <- coef(M1)[[2]]
+
+# The mass of a diamond is proportional to volume which for a round diamond, 
+# is approximately proportional to the cube of x.
+# Hence a 10% increase in the mass is approximately proportional to a
+# (1.10 ^ (1/3) - 1) * 100 % increase in the price. 
+# Since price = exp(beta_0) x ^ (beta_1), if x increases by a % then the price
+# increases by ((1 + a / 100) ^ (beta_1) - 1) * 100 %. 
+percent.increase.x <- (1.10 ^ (1/3) - 1) * 100
+multiplier.x <- 1.10 ^ (1/3)
+percent.increase.price <- (multiplier.x ^ (beta.1) - 1) * 100
+```
+The estimated coefficient for $\log(x)$ is `r format(round(beta.1, 3), nsmall=3)` to 3.d.p. (*)
+
+The value of this estimate does appear reasonable given the application context. Firstly, by using the volume of a sphere, the volume of a round diamond is approximately proportional to $x^3$. Since the mass of the diamond is proportional to the volume, we have the mass of a round diamond is approximately proportional to $x^3$.
+
+Hence, if we have two round diamonds where diamond A is 10% heavier than diamond
+B then we expect the length of diamond A to be $(1.10^{\frac{1}{3}} - 1) \times 100 = `r round(percent.increase.x, 3)`$% (**)
+longer than the length of diamond B to 3.d.p.
+
+By M1, we have 
+\[
+  \log(\text{price}) = \beta_0 + \beta_1 \log(x).
+\]
+Changing the subject for price we obtain
+\[
+  \text{price} = \exp(\beta_0) \times x^{\beta_1}.
+\]
+Let $x_A$ and $x_B$ be the lengths of diamonds A and B respectively. 
+Similarly, let $\text{price}_A$ and $\text{price}_B$ be the prices of diamonds A and B respectively. 
+
+Then, the
+\begin{align*}
+  \text{percentage difference in price} 
+  & = \frac{\text{price}_A - \text{price}_B}{\text{price}_B} \times 100 \\
+  & = \left(
+        \frac{\exp(\beta_0) \times x_A^{\beta_1}}{\exp(\beta_0) \times x_B^{\beta_1}} - 1
+      \right) \times 100 \\
+  & = \left(
+        \left(
+          \frac{x_A}{x_B}
+        \right)^{\beta_1} - 1
+      \right) \times 100 \\
+  & = ((1.10^{\frac{1}{3}})^{`r format(round(beta.1, 3), nsmall=3)`} - 1) \times 100 && \text{by (*) and (**)}\\
+  & = `r format(round(percent.increase.price, 3), nsmall=3)`\%
+\end{align*}
+to 3.d.p. To the nearest integer, we expect diamond A to be approximately `r round(percent.increase.price)` % more expensive than diamond B, which aligns with the information shared by the jeweller. 
+
+## b. 
+
+We consider the model M2 where for $j = 1, \dots, 607$, 
+\[
+  \mathbb{E}(\log(\text{Price}_j)) = \beta_0 + \beta_1 \log(x_j) + \beta_2 \log(y_j) + \beta_3 \log(z_j).
+\]
+Using a similar approach to part (a), we obtain $\text{Volume} \propto xyz$. Hence, $\text{Price} \propto \text{Weight}^2$ and thus $\text{Price} \propto (xyz)^2$. Taking logs on both sides yields $\log(\text{Price}) = 2\log(x) + 2\log(y) + 2\log(z)$ therefore we expect $\beta_i = 2$ for $i = 1, 2, 3$. 
+
+## c.
+
+```{r, 1c}
+# Adding log.y and log.z columns to dia for future reference. 
+dia <- dia %>%
+  mutate(
+    log.y=log(y), 
+    log.z=log(z)
+  )
+
+# Model 2. 
+M2 <- lm(log.price ~ log.x + log.y + log.z, data=dia)
+
+# Printing summary output. 
+summary(M2)
+```
+\textbf{Null and alternative hypothesis:} $H_0: \beta_1 = 0$ versus $H_A: \beta_1 \neq 0$. 
+
+Firstly, considering a significance level of 5%, the p-value reported in the $\mathrm{Pr}(>|t|)$ column for $\log(x)$ in the model summary is $0.842 > 0.05$. Therefore, there is insufficient evidence to reject the null hypothesis. 
+
+## d. 
+
+```{r, 1d}
+anova(M2)
+```
+
+The **null and alternative hypotheses** for $\log(x)$ in the sequential ANOVA is $H_0: \beta_1 = 0$ versus $H_A: \beta_1 \neq 0$. We take a significance level of 1% where the p-value equals $\mathrm{P}(>|F|)$. In the $\mathrm{P}(>|F|)$ column of the output for $\log(x)$, the p-value is $<< 0.01$ hence there is insufficient evidence to reject the null hypothesis. Note this does not contradict our conclusion in part (c). 
+
+While the sequential ANOVA tests the marginal contribution of $\log(x)$ before $\log(y)$ and $\log(z)$ are added to the model, the t-tests in part (c) test if $\log(x)$ adds an explanatory influence after $\log(y)$ and $\log(z)$ are added to the model. 
+
+However, a small discrepancy does arise. As $x$, $y$, and $z$ are highly correlated, once $\log(y)$ and $\log(z)$ are added to the model $\log(x)$ contributes little additional information to the model. 
+
+## e. 
+
+```{r, 1e-scatterplots, fig.pos="H", fig.cap="Pairwise scatterplots for $\\log(x)$, $\\log(y)$ and $\\log(z)$."}
+pairs(~ log.x + log.y + log.z,
+      cex=0.5,
+      data=dia, 
+      panel=panel.smooth,
+      labels=c("log(x)", "$log(y)", "log(z)"))
+```
+
+
+The large difference between the estimated slope coefficients and the expected values from part (b) are likely due to multi-collinearity. As $x$, $y$ and $z$ measure the physical dimensions of the same diamond, all variables measure similar information causing the slope coefficients to be unstable. In addition, this may make important variables seem unimportant which is perhaps a reason behind the insufficient evidence to reject the null hypothesis for $\log(x)$ in parts (b) and (c). 
+
+To detect multi-collinearity, we use the Variance Inflation Factor (VIF) which calculates the amount a variance of a variable has been increased due to multi-collinearity. 
+
+```{r, 1e-table}
+vif.M2 <- t(vif(M2))
+colnames(vif.M2) <- c("log(x)", "log(y)", "log(z)")
+knitr::kable(
+  vif.M2, 
+  digits=5, 
+  caption="VIF values for $\\log(x)$, $\\log(y)$, $\\log(z)$"
+  )
+```
+
+
+Usually, we consider a $\text{VIF} > 10$ large and thus implying multi-collinearity. From Table 1, we see the VIF for $\log(x)$, $\log(y)$ and $\log(z)$ are greater than 10, although the VIF for $\log(z)$ is considerably smaller, hence implying multi-collinearity between all three predictors. 
+
+Furthermore, Figure 1 confirms these predictors are almost perfectly correlated explaining why the individual coefficient estimates in M2 are unstable.
+
+# Question 2
+
+## a.
+
+```{r, 2a}
+# Adding log.weight column to dia for future reference. 
+dia <- dia %>%
+  mutate(log.weight=log(weight))
+
+# Model 3. 
+M3 <<- lm(log.price ~ log.weight, data=dia)
+```
+
+## b.
+
+```{r, 2b-processing}
+# Create three subsets of dia by the cut. 
+dia.by.cut <- dia %>% 
+  mutate(cut = factor(cut, levels=c("Good", "Very Good", "Ideal"))) %>%
+  group_by(cut) %>%
+  group_split()
+
+# Model for good cut. 
+model.good.cut <- lm(log.price ~ log.weight, data=dia.by.cut[[1]])
+
+# Model for very good cut. 
+model.very.good.cut <- lm(log.price ~ log.weight, data=dia.by.cut[[2]])
+
+# Model for ideal cut. 
+model.ideal.cut <- lm(log.price ~ log.weight, data=dia.by.cut[[3]])
+
+create.plot.by.cut <- function (model, df, name) {
+  log.weight <- df[["log.weight"]]
+  log.price <- df[["log.price"]]
+  
+  ax <- seq(min(log.weight), max(log.weight), length.out=101)
+  fitted.curve.model <- predict(model, newdata=data.frame(log.weight=ax))
+  fitted.curve.M3 <- predict(M3, newdata=list(log.weight=ax))
+  
+  plot(
+    log.weight, 
+    log.price,
+    xlab="log(weight) in log(carat)",
+    ylab="log(price) in log(USD)"
+  )
+  
+  # Fit both regression models. 
+  lines(ax, fitted.curve.model, col="navy", lwd=2)
+  lines(ax, fitted.curve.M3, col="red", lwd=2)
+  
+  legend(
+    "topleft", 
+    legend=c(paste("Model for", name, "cut diamonds"), "M3"),
+    fill=c("navy", "red"), 
+    text.col="black"
+  )
+}
+```
+
+```{r, 2b-plot 1, fig.pos="H", fig.cap="Scatterplot of the logarithm of the price against the logarithm of the weight with fitted curves of the linear model for good cut diamonds and M3 which take observations from good cut and all cut types respectively."}
+create.plot.by.cut(
+  model=model.good.cut, 
+  df=dia.by.cut[[1]], 
+  name="good"
+)
+```
+```{r, 2b-plot 2, fig.pos="H", fig.cap="Scatterplot of the logarithm of the price against the logarithm of the weight with fitted curves of the linear model for very good cut diamonds and M3 which take observations from very good cut and all cut types respectively."}
+create.plot.by.cut(
+  model=model.very.good.cut, 
+  df=dia.by.cut[[2]], 
+  name="very good"
+)
+```
+```{r, 2b-plot 3, fig.pos="H", fig.cap="Scatterplot of the logarithm of the price against the logarithm of the weight with fitted curves of the linear model for ideal cut diamonds and M3 which take observations from ideal cut and all cut types respectively."}
+create.plot.by.cut(
+  model=model.ideal.cut, 
+  df=dia.by.cut[[3]], 
+  name="ideal"
+)
+```
+
+## c. 
+
+All three scatterplots show a strong linear relationship between $\log(\text{weight})$ and $\log(\text{price})$ and hence a linear model is suitable in each case. However, the regression line fitted to each subset is different from the fitted line for M3, particularly in Figure 4. From Figure 2, for good cut diamonds, we see that the subset line lies below the M3 line implying M3 overestimates the price of good cut diamonds on average. From Figure 3, for very good cut diamonds, the fitted lines are almost identical implying M3 estimates the price of very good cut diamonds precisely. Finally, from Figure 4, for ideal cut diamonds, the subset line is above M3 implying M3 systematically underestimates the price of ideal cut diamonds. 
+
+Noticeably, the slopes of all four lines are approximately equal which suggests there is little use of adding an interaction between cut and $\log(\text{weight})$. However, their intercepts differ significantly across the cut groups which implies adding cut as a main effect is useful, since it would account for the vertical shift in price associated with diamonds of equal weights. 
+
+## d. 
+
+```{r, 2d}
+m_cut   <- lm(log.price ~ log.weight + cut, data=dia)
+m_inter <- lm(
+  log.price ~ log.weight + cut + log.weight:cut, data=dia
+)
+anova(M3, m_cut, m_inter)
+```
+Since M3 is nested within $\text{m}_{\text{cut}}$, which in turn is nested within $\text{m}_{\text{inter}}$, we use sequential F-tests via ANOVA. For adding cut as a main effect, the **null and alternative hypotheses** are
+$$
+H_0: \beta_{\text{cut}_1} = \beta_{\text{cut}_2} = 0, \quad \text{versus} \quad H_A: (\beta_{\text{cut}_1}, \beta_{\text{cut}_2}) \neq (0, 0). 
+$$
+Since the p-value is $<<0.01$, at the 1% significance level we reject $H_0$ and conclude that cut is included in the main effect. Hence, the cut quality of the diamond is a significant predictor of its price after accounting for weight. 
+
+For adding the interaction, the **null and alternative hypotheses** are
+$$
+H_0: \beta_{\text{inter}_1} = \beta_{\text{inter}_2} = 0, \quad \text{versus} \quad H_A: (\beta_{\text{inter}_1}, \beta_{\text{inter}_2}) \neq (0, 0). 
+$$
+
+From row three of the $\text{Pr}(>|t|)$ column in the output, we find the p-value to be 0.192 > 0.01 (to 3.d.p) there is insufficient evidence to reject the null hypothesis. Hence, the interaction between cut and $\log(\text{weight})$ is not needed which is consistent with the conclusions made from the scatter plots in part (c). 
+
+## e. 
+
+```{r, 2e}
+M <- lm(log.price ~ cut/log.weight, data=dia)
+summary(M)
+```
+
+The formula $\text{cut}/\log(\text{weight})$ is the same as $\text{cut} + \text{cut}:\log{\text{weight}}$. For each cut group, this fits a model with a separate intercept and slope. 
+
+Firstly, let $x_{iG}$, $x_iVG$ and $x_jI$ as indicator variables for good, very good and ideal cut groups respectively and $j = 1, \dots, 607$. Using "good cut" as the baseline group, the model equation for the $i^{\text{th}}$ observation is: 
+
+\begin{multline}
+  \log(\text{price}_i) = c_G + \alpha_{VG} x_{iVG} + \alpha_I x_{iI} + \beta_G \log(\text{weight}_i) x_{iG} + \\ \beta_{VG} \log(\text{weight}_i) x_{iVG} + \beta_{I} \log(\text{weight}_i) x_{iI} + \epsilon_i
+\end{multline}
+
+We can interpret the parameters as follows: 
+
+1. $c_G$ is the intercept of the "good cut" diamonds which was our baseline group. 
+
+2. $\alpha_{VG}$ is the difference between the intercepts of the "good cut" and "very good" cut regression lines. 
+
+3. $\alpha_I$ is the difference between the intercepts of the "good cut" and "ideal cut" regression lines. 
+
+4. $\beta_G$, $\beta_{VG}$, $\beta_I$ are the gradients of $\log(\text{weight})$ for good, very good and ideal cut diamonds respectively. 
+
+5. Finally, $\epsilon_i$ is the error term for the $i^{\text{th}}$ observation. 
+
+Rounded to 3.d.p, the least squares estimates are: $\hat{c}_G = 8.479, \hat{\alpha}_{VG} = 0.0528, \hat{\alpha}_I = 0.107, \hat{\beta}_G = 1.956, \hat{\beta}_{VG} = 2.012, \hat{\beta}_I = 1.933$. 
+
+# Question 3
+
+## a. 
+
+```{r, 3a, fg.pos="H", fig.cap="Residuals versus fitted values in log(USD) from M4 overlaid with a Lowess smoother. Red and black data points represent SI and VSI clarity diamonds respectively."}
+M4 <- lm(log.price ~ log.weight + cut, data=dia)
+clarity <- dia$clarity
+plot(
+  M4, 
+  which=1,
+  col=factor(clarity), 
+  pch=16, 
+  cex=0.5
+)
+
+legend(
+  legend=c("SI clarity", "VSI clarity"),
+  fill=c("red", "black"),
+  cex=0.6,
+  "topright"
+)
+
+```
+
+
+From Figure 5, we notice a clear systematic structure in the data by clarity group. Observations with Slightly Imperfect (SI) clarity tend to remain below the zero line while observations with Very Slightly Imperfect (VSI) clarity tend to remain above the zero line across all the fitted values. This suggests M4 overestimates the $\log(\text{price})$ for SI diamonds and underestimates $\log(\text{price})$ for VSI diamonds. Hence, this systematic pattern strongly suggests adding clarity as a predictor to the model will improve the model. 
+
+## b. 
+
+```{r, 3b}
+M5 <- lm(log.price ~ log.weight + cut + clarity, data=dia)
+anova(M4, M5)
+
+```
+As M4 is nested within M5 (obtained by setting $\beta_{\text{clarity}} = 0$ in M5), we use a partial F-test. 
+
+The model under $H_0$ is $\mathbb{E}[\log(\text{price})] = \beta_0 + \beta_1 \log(\text{weight}) + \beta_{\text{cut}}$, that is, for M4, clarity has no effect on price beyond weight and cut. Additionally, the model under $H_A$ is $\mathbb{E}[\log(\text{price})] = \beta_0 + \beta_1 \log(\text{weight}) + \beta_{\text{cut}} + \beta_{\text{clarity}}$, i.e. that is, for M5, clarity has a non-zero effect on price.
+
+Now, we find the algebraic expression for the test statistic. Let 
+
+1. $D_{M4}$ and $D_{M5}$ be the residual sums of squares of M4 and M5 respectively, 
+
+2. $q$ be the number of additional parameters added when moving from M4 to M5, 
+
+3. $n$ is the number of observations, and 
+
+4. $p$ is the total number of parameters in M5.
+
+Then, we have: 
+
+$$
+  F = \frac{\frac{D_{M4} - D_{M5}}{q}}{\frac{D_{M5}}{n - p}}.
+$$
+
+Here, we have $n = 607$. As clarity has two levels, SI and VSI, a single indicator variable suffices hence $q = 1$. 
+
+M5 has $p = 5$ parameters (intercept, $\log(\text{weight})$, two cut dummies and finally one clarity dummy). Therefore, under $H_0$, the test statistic therefore follows an $F_{(1,\, 602)}$ distribution. Now, using the residual sums of squares from the ANOVA output, we obtain the following, rounding $F_{\text{obs}}$ to 1.d.p: 
+
+$$
+F_{\text{obs}} = \frac{\frac{15.526 - 6.056}{1}}{\frac{6.056}{602}} = \frac{9.47}{0.01006} \approx 941.4
+$$
+
+Since the p-value is less than 0.01, at the 1% significance level we therefore reject the null hypothesis and conclude that clarity is a statistically significant predictor of the price of the diamonds (even after accounting for weight and cut).
+
+In the context of this application, the diamond's clarity grade provides important information regarding the sale price. Hence, a jeweller looking to predict prices accurately should include clarity in the model.
+
+## c. 
+
+Yes. In this case, the partial F-test could be replaced by a two-sided t-test since $q = 1$. Clarity is a binary variable with two levels, that is SI and VSI, thus only one coefficient is being tested. 
+
+When the F-statistic has one degree of freedom in the numerator, the identity $F = t^2$ holds exactly. This implies the partial F-test and the two-sided t-test are equivalent and hence will give the same conclusion. 
