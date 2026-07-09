@@ -1,6 +1,6 @@
 ## About
 
-Two projects completed in my statistical modelling modules: 
+Two projects completed in my statistical modelling modules in my first and second years. 
 
 ### Water Chemistry EDA
 EDA of three datasets storing precipiation, soil solution and stream water chemistry data. TO BE ADDED. 
