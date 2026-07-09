@@ -3,7 +3,7 @@
 Two projects completed in my statistical modelling modules: 
 
 ### Water Chemistry EDA
-EDA of three datasets storing precipiation, soil solution and stream water chemistry data. 
+EDA of three datasets storing precipiation, soil solution and stream water chemistry data. TO BE ADDED. 
 
 ### Diamond Price Modelling
 Finding the relationship between the price and cut quality of diamonds using linear regression models. 
